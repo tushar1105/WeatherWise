@@ -1,0 +1,37 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/event_type_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Event Type" />
+
+    <EditText
+        android:id="@+id/event_location_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Location" />
+
+    <EditText
+        android:id="@+id/event_date_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Date" />
+
+    <EditText
+        android:id="@+id/event_status_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Status" />
+
+    <Button
+        android:id="@+id/save_event_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Event" />
+</LinearLayout>
