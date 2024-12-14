@@ -15,6 +15,6 @@ public interface EmergencyEventDao {
     @Insert
     void insert(EmergencyEvent event);
 
-    @Query("SELECT * FROM EmergencyEvent")
+    @Query("SELECT * FROM emergency_events")
     LiveData<List<EmergencyEvent>> getAllEvents();
 }

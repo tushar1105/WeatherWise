@@ -3,16 +3,23 @@ package com.example.finalproject.model;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 
-@Entity
+@Entity(tableName = "emergency_events")
 public class EmergencyEvent {
 
     @PrimaryKey(autoGenerate = true)
     private int id;
+    private String eventType;
+    private String eventDescription;
+    private double latitude;
+    private double longitude;
 
-    private String type;
-    private String location;
-    private String date;
-    private String status;
+    // Constructor
+    public EmergencyEvent(String eventType, String eventDescription, double latitude, double longitude) {
+        this.eventType = eventType;
+        this.eventDescription = eventDescription;
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
 
     // Getters and Setters
     public int getId() {
@@ -23,35 +30,35 @@ public class EmergencyEvent {
         this.id = id;
     }
 
-    public String getType() {
-        return type;
+    public String getEventType() {
+        return eventType;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public void setEventType(String eventType) {
+        this.eventType = eventType;
     }
 
-    public String getLocation() {
-        return location;
+    public String getEventDescription() {
+        return eventDescription;
     }
 
-    public void setLocation(String location) {
-        this.location = location;
+    public void setEventDescription(String eventDescription) {
+        this.eventDescription = eventDescription;
     }
 
-    public String getDate() {
-        return date;
+    public double getLatitude() {
+        return latitude;
     }
 
-    public void setDate(String date) {
-        this.date = date;
+    public void setLatitude(double latitude) {
+        this.latitude = latitude;
     }
 
-    public String getStatus() {
-        return status;
+    public double getLongitude() {
+        return longitude;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
     }
 }

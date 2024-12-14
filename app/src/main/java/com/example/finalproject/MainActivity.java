@@ -1,31 +1,45 @@
 package com.example.finalproject;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.Bundle;
+import android.os.Looper;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.finalproject.adapter.EmergencyEventAdapter;
 import com.example.finalproject.dao.AppDatabase;
-import com.example.finalproject.model.EmergencyEvent;
 import com.example.finalproject.externalApi.WeatherApiService;
 import com.example.finalproject.externalApi.WeatherResponse;
+import com.example.finalproject.model.EmergencyEvent;
 import com.example.finalproject.retrofit.RetrofitClient;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -40,6 +54,9 @@ public class MainActivity extends AppCompatActivity {
 
     // List to hold emergency events
     private List<EmergencyEvent> events;
+
+    // Location Client
+    private FusedLocationProviderClient fusedLocationProviderClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,11 +77,20 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
 
+        // Initialize Location Client
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
         // Setup MapView
         mapView.onCreate(savedInstanceState);
         mapView.getMapAsync(map -> {
             googleMap = map;
             loadMarkers(); // Load markers when map is ready
+
+            // Set a marker click listener
+            googleMap.setOnMarkerClickListener(marker -> {
+                marker.showInfoWindow(); // Show the bubble with description
+                return true;
+            });
         });
 
         // Set up "Add Event" button click listener
@@ -76,9 +102,111 @@ public class MainActivity extends AppCompatActivity {
         // Load events from the database
         loadEventsFromDatabase();
 
-        // Fetch weather data
-        fetchWeatherData("London"); // Replace with dynamic location if needed
+        // Fetch current location and weather data
+        fetchCurrentLocationWeather();
     }
+
+    /**
+     * Fetches the current device location and displays weather information for that location.
+     */
+    // Initialize LocationRequest with the new API
+    LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
+            .setMinUpdateIntervalMillis(5000)
+            .setWaitForAccurateLocation(true)
+            .build();
+
+    // Create LocationCallback to receive location updates
+    LocationCallback locationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(@NonNull LocationResult locationResult) {
+            if (locationResult != null) {
+                // Get the most recent location
+                Location location = locationResult.getLastLocation();
+                if (location != null) {
+                    // Use the location (latitude, longitude) as needed
+                    fetchWeatherData(location);
+                }
+            }
+        }
+    };
+
+    private void fetchCurrentLocationWeather() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 100);
+            return;
+        }
+
+        fusedLocationProviderClient.requestLocationUpdates(
+                locationRequest,
+                new LocationCallback() {
+                    @Override
+                    public void onLocationResult(LocationResult locationResult) {
+                        if (locationResult != null && locationResult.getLocations() != null) {
+                            Location location = locationResult.getLastLocation();
+                            if (location != null) {
+                                fetchWeatherData(location);
+                            } else {
+                                // Use default location (Waterloo) if location is null
+                                //weatherInfo.setText("Unable to fetch location. Defaulting to Waterloo.");
+                                fetchWeatherData(null);
+                            }
+                        }
+                    }
+                },
+                Looper.getMainLooper());
+    }
+
+    /**
+     * Fetches weather data for the given location.
+     *
+     * @param location Current device location
+     */
+    private void fetchWeatherData(Location location) {
+        // Default location for Waterloo, ON if location is not available
+        double defaultLatitude = 43.4621;  // Latitude for Waterloo, ON
+        double defaultLongitude = -80.5400;  // Longitude for Waterloo, ON
+
+        // If location is null, use the default (Waterloo)
+        if (location == null) {
+            location = new Location("default");
+            location.setLatitude(defaultLatitude);
+            location.setLongitude(defaultLongitude);
+        }
+
+        // Use the location (latitude, longitude) for weather data
+        WeatherApiService weatherApiService = RetrofitClient.getInstance().create(WeatherApiService.class);
+        String apiKey = "e492236b9a6a9b51adf68579c84b552a";
+
+        Call<WeatherResponse> call = weatherApiService.getWeather(location.getLatitude(),location.getLongitude(),apiKey,"metric");
+
+        call.enqueue(new Callback<WeatherResponse>() {
+            @Override
+            public void onResponse(Call<WeatherResponse> call, Response<WeatherResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    WeatherResponse weatherResponse = response.body();
+                    String weatherText = "City: " + weatherResponse.getCityName() +
+                            "\nTemperature: " + weatherResponse.getMain().getTemp() + "\u00B0C" +
+                            "\nWeather: " + weatherResponse.getWeather().get(0).getDescription();
+                    weatherInfo.setText(weatherText);
+                } else {
+                    // Log detailed response and error code
+                    Log.e("WeatherApi", "Response error: " + response.code() + " " + response.message());
+                    weatherInfo.setText("Failed to fetch weather data.");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<WeatherResponse> call, Throwable t) {
+                // Log the error message for debugging
+                Log.e("WeatherApi", "API call failure: " + t.getMessage());
+
+                // Show default weather info (Waterloo) in case of error
+                String defaultWeatherText = "City: Waterloo, ON\nTemperature: 10°C\nWeather: Clear sky";
+                weatherInfo.setText(defaultWeatherText);
+            }
+        });
+    }
+
 
     /**
      * Loads markers for emergency events onto the map.
@@ -88,10 +216,11 @@ public class MainActivity extends AppCompatActivity {
             googleMap.clear(); // Clear existing markers
 
             for (EmergencyEvent event : events) {
-                LatLng location = new LatLng(43.4643, 80.5204);
+                LatLng location = new LatLng(event.getLatitude(), event.getLongitude());
                 googleMap.addMarker(new MarkerOptions()
                         .position(location)
-                        .title(event.getType()));
+                        .title(event.getEventType())
+                        .snippet(event.getEventDescription())); // Show description in bubble
             }
         }
     }
@@ -110,37 +239,6 @@ public class MainActivity extends AppCompatActivity {
 
             // Update map markers
             loadMarkers();
-        });
-    }
-
-    /**
-     * Fetches weather data from the OpenWeatherMap API.
-     *
-     * @param cityName Name of the city for which to fetch weather data
-     */
-    private void fetchWeatherData(String cityName) {
-        WeatherApiService weatherApiService = RetrofitClient.getInstance().create(WeatherApiService.class);
-        String apiKey = "e492236b9a6a9b51adf68579c84b552a"; // Replace with your actual API key
-
-        Call<WeatherResponse> call = weatherApiService.getWeather(cityName, apiKey,"metric");
-        call.enqueue(new Callback<WeatherResponse>() {
-            @Override
-            public void onResponse(Call<WeatherResponse> call, Response<WeatherResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    WeatherResponse weatherResponse = response.body();
-                    String weatherText = "City: " + weatherResponse.getCityName() +
-                            "\nTemperature: " + weatherResponse.getMain().getTemp() + "\u00B0C" +
-                            "\nWeather: " + weatherResponse.getWeather().get(0).getDescription();
-                    weatherInfo.setText(weatherText);
-                } else {
-                    weatherInfo.setText("Failed to fetch weather data.");
-                }
-            }
-
-            @Override
-            public void onFailure(Call<WeatherResponse> call, Throwable t) {
-                weatherInfo.setText("Error: " + t.getMessage());
-            }
         });
     }
 
@@ -166,5 +264,17 @@ public class MainActivity extends AppCompatActivity {
     public void onLowMemory() {
         super.onLowMemory();
         mapView.onLowMemory();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 100 && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            fetchCurrentLocationWeather();
+        } else {
+            weatherInfo.setText("Permission denied.");
+            fetchWeatherData(null); // Use default location if permission is denied
+        }
     }
 }

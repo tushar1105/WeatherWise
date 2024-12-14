@@ -31,11 +31,12 @@ public class EmergencyEventAdapter extends RecyclerView.Adapter<EmergencyEventAd
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         EmergencyEvent event = events.get(position);
-        holder.typeTextView.setText("Type: " + event.getType());
-        holder.locationTextView.setText("Location: " + event.getLocation());
-        holder.dateTextView.setText("Date: " + event.getDate());
-        holder.statusTextView.setText("Status: " + event.getStatus());
+
+        // Set the event details
+        holder.typeTextView.setText("Type: " + event.getEventType());
+        holder.descriptionTextView.setText("Description: "+event.getEventDescription());
     }
+
 
     @Override
     public int getItemCount() {
@@ -43,14 +44,12 @@ public class EmergencyEventAdapter extends RecyclerView.Adapter<EmergencyEventAd
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView typeTextView, locationTextView, dateTextView, statusTextView;
+        TextView typeTextView, locationTextView, descriptionTextView;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             typeTextView = itemView.findViewById(R.id.event_type);
-            locationTextView = itemView.findViewById(R.id.event_location);
-            dateTextView = itemView.findViewById(R.id.event_date);
-            statusTextView = itemView.findViewById(R.id.event_status);
+            descriptionTextView = itemView.findViewById(R.id.event_description);
         }
     }
 }
